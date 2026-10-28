@@ -3,11 +3,6 @@ using UnityEngine.InputSystem;
 
 public class WalkerController : MonoBehaviour
 {
-    private Rigidbody2D rb;
-    private SpriteRenderer spriteRenderer;
-    private InputAction moveAction;
-    private float moveInput;
-
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 6f;
 
@@ -24,22 +19,26 @@ public class WalkerController : MonoBehaviour
     private bool jumpCutRequested;
     private bool isGrounded;
 
-    private static readonly int SpeedHash = Animator.StringToHash("Speed");
+    private static readonly int SpeedHash    = Animator.StringToHash("Speed");
     private static readonly int GroundedHash = Animator.StringToHash("IsGrounded");
 
     private Animator animator;
+    private Rigidbody2D rb;
+    private SpriteRenderer spriteRenderer;
+    private InputAction moveAction;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
+        animator = GetComponent<Animator>();
         moveAction = InputSystem.actions.FindAction("Move");
         jumpAction = InputSystem.actions.FindAction("Jump");
         Debug.Log($"Awake: rb={rb != null}, sr={spriteRenderer != null}, " +
                   $"move={moveAction != null}");
-
-        animator = GetComponent<Animator>();
     }
+
+    private float moveInput;
 
     void Update()
     {
@@ -48,10 +47,12 @@ public class WalkerController : MonoBehaviour
         {
             spriteRenderer.flipX = moveInput > 0f;
         }
+
         if (jumpAction.WasPressedThisFrame())
         {
             jumpRequested = true;
         }
+
         if (jumpAction.WasReleasedThisFrame())
         {
             jumpCutRequested = true;
@@ -59,17 +60,17 @@ public class WalkerController : MonoBehaviour
 
         animator.SetFloat(SpeedHash, Mathf.Abs(rb.linearVelocity.x));
         animator.SetBool(GroundedHash, isGrounded);
-
     }
+
     void FixedUpdate()
     {
-        rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);
-        bool wasGrounded = isGrounded;
         isGrounded = Physics2D.OverlapCircle(
             groundCheck.position, groundCheckRadius, groundLayer) != null;
+
         if (isGrounded) coyoteTimer = coyoteTime;
-        else coyoteTimer -= Time.fixedDeltaTime;
-        if (isGrounded != wasGrounded) Debug.Log($"isGrounded -> {isGrounded}");
+        else            coyoteTimer -= Time.fixedDeltaTime;
+
+        rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);
 
         if (jumpRequested && coyoteTimer > 0f)
         {
@@ -77,7 +78,6 @@ public class WalkerController : MonoBehaviour
             coyoteTimer = 0f;   // a granted jump spends the whole window
         }
 
-        jumpRequested = false;
         if (jumpCutRequested && rb.linearVelocity.y > 0f)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.5f);
@@ -85,11 +85,6 @@ public class WalkerController : MonoBehaviour
 
         jumpRequested = false;
         jumpCutRequested = false;
-        //if (jumpRequested && coyoteTimer > 0f)
-        //{
-        //    rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpVelocity);
-        //    coyoteTimer = 0f;   // a granted jump spends the whole window
-        //}
     }
 
     void OnDrawGizmosSelected()
@@ -99,5 +94,4 @@ public class WalkerController : MonoBehaviour
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
     }
-
 }
